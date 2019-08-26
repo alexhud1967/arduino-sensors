@@ -39,21 +39,21 @@ void loop()
  
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("CORNERSTONE");
+  lcd.print("  CORNERSTONE  ");
   lcd.setCursor(0,1);
-  lcd.print("POOL SERVICE");
+  lcd.print("  POOL SERVICE");
  delay(2500); 
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print(" SERVICE ON A");
+  lcd.print("  SERVICE ON A  ");
   lcd.setCursor(0,1);
-  lcd.print("SOLID FOUNDATION ");
+  lcd.print("SOLID FOUNDATION");
  delay(2500); 
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("DO EXCELLENT WORK");
+  lcd.print("  DO EXCELLENT");
   lcd.setCursor(0,1);
-  lcd.print("TODAY");
+  lcd.print("  WORK TODAY");
  delay(2500); 
   lcd.clear();
   lcd.setCursor(0,0);
