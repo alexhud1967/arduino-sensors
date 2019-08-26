@@ -52,9 +52,9 @@ void setup()
  delay(2500); 
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("BUT I'M ALL OUT   ");
+  lcd.print("AND I'M ALL OUT   ");
   lcd.setCursor(0,1);
-  lcd.print(" OF BUBBLEGUM");
+  lcd.print("      OF GUM");
  delay(2500); 
   
  }
