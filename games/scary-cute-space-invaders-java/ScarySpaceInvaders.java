@@ -57,16 +57,11 @@ public class ScarySpaceInvaders extends JFrame {
     }
     
     public static void main(String[] args) {
-        // Set system look and feel
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeel());
-        } catch (Exception e) {
-            // Use default look and feel
-        }
-        
-        // Create and run game on EDT
-        SwingUtilities.invokeLater(() -> {
-            new ScarySpaceInvaders();
+        // Create and run game on EDT (compatible with all Java versions)
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                new ScarySpaceInvaders();
+            }
         });
     }
 }
@@ -505,4 +500,3 @@ class GamePanel extends JPanel implements ActionListener, MouseListener, MouseMo
         player.x = e.getX();
     }
 }
-
