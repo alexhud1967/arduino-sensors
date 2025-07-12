@@ -35,6 +35,7 @@
     <div class="game-info">
         <div>Score: <span id="score">0</span></div>
         <div>Lives: <span id="lives">3</span></div>
+        <div>Extra Cannons: <span id="cannons">0</span></div>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -100,6 +101,14 @@
         let juggernaut = null;
         const juggernauts = [];
         
+        // Powerups
+        const powerups = [];
+        let lastPowerupTime = 0;
+        const powerupInterval = 15000; // 15 seconds between powerups
+        
+        // Player cannons
+        let extraCannons = 0;
+        
         // Initialize enemies
         function createEnemies() {
             enemies.length = 0;
@@ -125,29 +134,48 @@
                 });
             }
             
-            // Maybe spawn a juggernaut (20% chance)
-            if (Math.random() < 0.2) {
-                createJuggernaut();
-            }
+            // Always spawn a juggernaut
+            createJuggernaut();
         }
         
-        // Create juggernaut
+        // Create juggernaut with 5 concentric rings
         function createJuggernaut() {
             juggernaut = {
-                x: canvas.width / 2 - 40,
+                x: canvas.width / 2 - 50,
                 y: 30,
-                width: 80,
-                height: 60,
-                health: 15,
-                maxHealth: 15,
+                baseWidth: 100,
+                baseHeight: 80,
+                rings: 5, // 5 concentric rings
+                maxRings: 5,
                 alive: true,
                 speedX: 1,
                 speedY: 0.3,
                 lastShot: 0,
                 shakeX: 0,
                 shakeY: 0,
-                color: '#ff0066'
+                colors: ['#ff0066', '#ff3388', '#ff66aa', '#ff99cc', '#ffccee']
             };
+        }
+        
+        // Create powerup
+        function createPowerup() {
+            const types = [
+                { type: 'life', color: '#00ff00', symbol: '♥' },
+                { type: 'cannon', color: '#ffff00', symbol: '⚡' }
+            ];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            powerups.push({
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 30,
+                height: 30,
+                type: type.type,
+                color: type.color,
+                symbol: type.symbol,
+                speedY: 2,
+                alive: true
+            });
         }
         
         // Mouse movement
@@ -167,12 +195,18 @@
             ctx.fill();
         }
         
-        // Draw stars
+        // Draw stars (larger with black outline)
         function drawStars() {
-            ctx.fillStyle = 'white';
             stars.forEach(star => {
                 ctx.globalAlpha = star.brightness;
-                ctx.fillRect(star.x, star.y, 1, 1);
+                
+                // Black outline
+                ctx.fillStyle = 'black';
+                ctx.fillRect(star.x - 1, star.y - 1, 4, 4);
+                
+                // White star
+                ctx.fillStyle = 'white';
+                ctx.fillRect(star.x, star.y, 2, 2);
             });
             ctx.globalAlpha = 1;
         }
@@ -188,11 +222,16 @@
             });
         }
         
-        // Draw bullets
+        // Draw bullets (larger with black outline)
         function drawBullets() {
-            ctx.fillStyle = '#ffff00';
             bullets.forEach(bullet => {
-                ctx.fillRect(bullet.x - 1, bullet.y - 5, 2, 10);
+                // Black outline
+                ctx.fillStyle = 'black';
+                ctx.fillRect(bullet.x - 3, bullet.y - 8, 6, 16);
+                
+                // Yellow bullet
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(bullet.x - 2, bullet.y - 7, 4, 14);
             });
         }
         
@@ -206,25 +245,45 @@
             }
         }
         
-        // Create bullet
+        // Create bullet(s) - multiple if extra cannons
         function createBullet() {
+            // Main cannon
             bullets.push({
                 x: player.x,
                 y: player.y - player.height / 2
             });
+            
+            // Extra cannons
+            for (let i = 0; i < extraCannons; i++) {
+                bullets.push({
+                    x: player.x + (i + 1) * 15 * (i % 2 === 0 ? 1 : -1),
+                    y: player.y - player.height / 2
+                });
+            }
         }
         
-        // Draw enemies
+        // Draw enemies (with black outlines)
         function drawEnemies() {
             enemies.forEach(enemy => {
                 if (enemy.alive) {
                     // Vary opacity based on health
                     const healthRatio = enemy.health / enemy.maxHealth;
-                    ctx.fillStyle = enemy.color;
                     ctx.globalAlpha = 0.3 + (healthRatio * 0.7);
                     
-                    // Draw different shapes based on color
+                    // Draw different shapes based on color with black outlines
                     if (enemy.color === '#ffff00') { // Yellow - diamond
+                        // Black outline
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x + enemy.width/2, enemy.y - 2);
+                        ctx.lineTo(enemy.x + enemy.width + 2, enemy.y + enemy.height/2);
+                        ctx.lineTo(enemy.x + enemy.width/2, enemy.y + enemy.height + 2);
+                        ctx.lineTo(enemy.x - 2, enemy.y + enemy.height/2);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Yellow diamond
+                        ctx.fillStyle = enemy.color;
                         ctx.beginPath();
                         ctx.moveTo(enemy.x + enemy.width/2, enemy.y);
                         ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height/2);
@@ -233,10 +292,29 @@
                         ctx.closePath();
                         ctx.fill();
                     } else if (enemy.color === '#00ff88') { // Green - circle
+                        // Black outline
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.arc(enemy.x + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2 + 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Green circle
+                        ctx.fillStyle = enemy.color;
                         ctx.beginPath();
                         ctx.arc(enemy.x + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
                         ctx.fill();
                     } else if (enemy.color === '#8800ff') { // Purple - triangle
+                        // Black outline
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x + enemy.width/2, enemy.y - 2);
+                        ctx.lineTo(enemy.x - 2, enemy.y + enemy.height + 2);
+                        ctx.lineTo(enemy.x + enemy.width + 2, enemy.y + enemy.height + 2);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Purple triangle
+                        ctx.fillStyle = enemy.color;
                         ctx.beginPath();
                         ctx.moveTo(enemy.x + enemy.width/2, enemy.y);
                         ctx.lineTo(enemy.x, enemy.y + enemy.height);
@@ -244,6 +322,12 @@
                         ctx.closePath();
                         ctx.fill();
                     } else { // Rectangle for others
+                        // Black outline
+                        ctx.fillStyle = 'black';
+                        ctx.fillRect(enemy.x - 2, enemy.y - 2, enemy.width + 4, enemy.height + 4);
+                        
+                        // Colored rectangle
+                        ctx.fillStyle = enemy.color;
                         ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
                     }
                 }
@@ -251,46 +335,73 @@
             ctx.globalAlpha = 1;
         }
         
-        // Draw juggernaut
+        // Draw juggernaut with concentric rings
         function drawJuggernaut() {
             if (juggernaut && juggernaut.alive) {
-                const healthRatio = juggernaut.health / juggernaut.maxHealth;
-                
                 // Calculate shake based on damage
-                const shakeIntensity = (1 - healthRatio) * 5;
+                const damageRatio = 1 - (juggernaut.rings / juggernaut.maxRings);
+                const shakeIntensity = damageRatio * 8;
                 juggernaut.shakeX = (Math.random() - 0.5) * shakeIntensity;
                 juggernaut.shakeY = (Math.random() - 0.5) * shakeIntensity;
                 
-                // Size increases as it takes damage
-                const sizeMultiplier = 1 + (1 - healthRatio) * 0.5;
-                const drawWidth = juggernaut.width * sizeMultiplier;
-                const drawHeight = juggernaut.height * sizeMultiplier;
+                // Size increases as rings are destroyed
+                const sizeMultiplier = 1 + damageRatio * 0.8;
+                const centerX = juggernaut.x + juggernaut.baseWidth / 2 + juggernaut.shakeX;
+                const centerY = juggernaut.y + juggernaut.baseHeight / 2 + juggernaut.shakeY;
                 
-                // Color gets more intense as it takes damage
-                const intensity = Math.floor(255 * (1 - healthRatio * 0.5));
-                ctx.fillStyle = `rgb(${intensity}, 0, ${Math.floor(intensity * 0.4)})`;
+                // Draw concentric rings from outside to inside
+                for (let ring = juggernaut.rings - 1; ring >= 0; ring--) {
+                    const ringSize = (ring + 1) * 15 * sizeMultiplier;
+                    const color = juggernaut.colors[ring];
+                    
+                    // Black outline
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(centerX - ringSize/2 - 3, centerY - ringSize/2 - 3, ringSize + 6, ringSize + 6);
+                    
+                    // Colored ring
+                    ctx.fillStyle = color;
+                    ctx.fillRect(centerX - ringSize/2, centerY - ringSize/2, ringSize, ringSize);
+                }
                 
-                // Draw with shake
-                const drawX = juggernaut.x + juggernaut.shakeX - (drawWidth - juggernaut.width) / 2;
-                const drawY = juggernaut.y + juggernaut.shakeY - (drawHeight - juggernaut.height) / 2;
-                
-                ctx.fillRect(drawX, drawY, drawWidth, drawHeight);
-                
-                // Draw health bar
-                const barWidth = juggernaut.width;
-                const barHeight = 6;
-                ctx.fillStyle = '#333';
-                ctx.fillRect(juggernaut.x, juggernaut.y - 15, barWidth, barHeight);
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(juggernaut.x, juggernaut.y - 15, barWidth * healthRatio, barHeight);
+                // Draw ring counter
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Rings: ${juggernaut.rings}`, centerX, juggernaut.y - 20);
             }
         }
         
-        // Draw enemy bullets
+        // Draw enemy bullets (larger with black outline)
         function drawEnemyBullets() {
-            ctx.fillStyle = '#ff4444';
             enemyBullets.forEach(bullet => {
-                ctx.fillRect(bullet.x - 1, bullet.y - 3, 2, 6);
+                // Black outline
+                ctx.fillStyle = 'black';
+                ctx.fillRect(bullet.x - 3, bullet.y - 5, 6, 10);
+                
+                // Red bullet
+                ctx.fillStyle = '#ff4444';
+                ctx.fillRect(bullet.x - 2, bullet.y - 4, 4, 8);
+            });
+        }
+        
+        // Draw powerups
+        function drawPowerups() {
+            powerups.forEach(powerup => {
+                if (powerup.alive) {
+                    // Black outline
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(powerup.x - 2, powerup.y - 2, powerup.width + 4, powerup.height + 4);
+                    
+                    // Powerup background
+                    ctx.fillStyle = powerup.color;
+                    ctx.fillRect(powerup.x, powerup.y, powerup.width, powerup.height);
+                    
+                    // Symbol
+                    ctx.fillStyle = 'black';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(powerup.symbol, powerup.x + powerup.width/2, powerup.y + powerup.height/2 + 7);
+                }
             });
         }
         
@@ -334,7 +445,7 @@
                 juggernaut.y += juggernaut.speedY;
                 
                 // Bounce off walls
-                if (juggernaut.x <= 0 || juggernaut.x + juggernaut.width >= canvas.width) {
+                if (juggernaut.x <= 0 || juggernaut.x + juggernaut.baseWidth >= canvas.width) {
                     juggernaut.speedX *= -1;
                 }
                 
@@ -346,18 +457,32 @@
                     juggernaut.speedY = Math.abs(juggernaut.speedY);
                 }
                 
-                // Juggernaut shooting
+                // Juggernaut shooting (more bullets as rings are destroyed)
                 if (currentTime - juggernaut.lastShot > 1500) {
-                    // Shoot multiple bullets
-                    for (let i = 0; i < 3; i++) {
+                    const bulletCount = 6 - juggernaut.rings; // More bullets with fewer rings
+                    for (let i = 0; i < bulletCount; i++) {
                         enemyBullets.push({
-                            x: juggernaut.x + juggernaut.width / 2 + (i - 1) * 20,
-                            y: juggernaut.y + juggernaut.height,
-                            speedX: (i - 1) * 1,
+                            x: juggernaut.x + juggernaut.baseWidth / 2 + (i - bulletCount/2) * 15,
+                            y: juggernaut.y + juggernaut.baseHeight,
+                            speedX: (i - bulletCount/2) * 0.8,
                             speedY: enemyBulletSpeed + 1
                         });
                     }
                     juggernaut.lastShot = currentTime;
+                }
+            }
+            
+            // Update powerups
+            const currentTime2 = Date.now();
+            if (currentTime2 - lastPowerupTime > powerupInterval) {
+                createPowerup();
+                lastPowerupTime = currentTime2;
+            }
+            
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                powerups[i].y += powerups[i].speedY;
+                if (powerups[i].y > canvas.height) {
+                    powerups.splice(i, 1);
                 }
             }
         }
@@ -376,35 +501,38 @@
             }
         }
         
-        // Juggernaut explosion
+        // Juggernaut core explosion (when all rings destroyed)
         function explodeJuggernaut() {
-            const centerX = juggernaut.x + juggernaut.width / 2;
-            const centerY = juggernaut.y + juggernaut.height / 2;
+            const centerX = juggernaut.x + juggernaut.baseWidth / 2;
+            const centerY = juggernaut.y + juggernaut.baseHeight / 2;
             
-            // Create sunburst of bullets
-            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+            // Create massive sunburst of bullets
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
                 enemyBullets.push({
                     x: centerX,
                     y: centerY,
-                    speedX: Math.cos(angle) * 4,
-                    speedY: Math.sin(angle) * 4
+                    speedX: Math.cos(angle) * 5,
+                    speedY: Math.sin(angle) * 5
                 });
             }
             
-            // Add some random bullets for chaos
-            for (let i = 0; i < 10; i++) {
+            // Add chaotic random bullets
+            for (let i = 0; i < 20; i++) {
                 const randomAngle = Math.random() * Math.PI * 2;
                 enemyBullets.push({
-                    x: centerX + (Math.random() - 0.5) * 40,
-                    y: centerY + (Math.random() - 0.5) * 40,
-                    speedX: Math.cos(randomAngle) * (2 + Math.random() * 3),
-                    speedY: Math.sin(randomAngle) * (2 + Math.random() * 3)
+                    x: centerX + (Math.random() - 0.5) * 60,
+                    y: centerY + (Math.random() - 0.5) * 60,
+                    speedX: Math.cos(randomAngle) * (3 + Math.random() * 4),
+                    speedY: Math.sin(randomAngle) * (3 + Math.random() * 4)
                 });
             }
             
             juggernaut = null;
-            score += 200; // Big bonus for killing juggernaut
+            score += 500; // Massive bonus for destroying all rings
             document.getElementById('score').textContent = score;
+            
+            // Immediately spawn a new juggernaut
+            setTimeout(createJuggernaut, 2000);
         }
         
         // Collision detection
@@ -436,15 +564,22 @@
                 // Player bullet-juggernaut collisions
                 if (juggernaut && juggernaut.alive && bullets[i]) {
                     const bullet = bullets[i];
-                    if (bullet.x >= juggernaut.x && 
-                        bullet.x <= juggernaut.x + juggernaut.width &&
-                        bullet.y >= juggernaut.y && 
-                        bullet.y <= juggernaut.y + juggernaut.height) {
-                        
-                        juggernaut.health--;
+                    const centerX = juggernaut.x + juggernaut.baseWidth / 2;
+                    const centerY = juggernaut.y + juggernaut.baseHeight / 2;
+                    const distance = Math.sqrt(
+                        Math.pow(bullet.x - centerX, 2) + 
+                        Math.pow(bullet.y - centerY, 2)
+                    );
+                    
+                    // Check if bullet hits any ring
+                    const outerRingRadius = juggernaut.rings * 15;
+                    if (distance <= outerRingRadius) {
+                        juggernaut.rings--;
                         bullets.splice(i, 1);
+                        score += 50; // Points for each ring destroyed
+                        document.getElementById('score').textContent = score;
                         
-                        if (juggernaut.health <= 0) {
+                        if (juggernaut.rings <= 0) {
                             explodeJuggernaut();
                         }
                     }
@@ -469,9 +604,40 @@
                 }
             }
             
-            // Check if all enemies are destroyed
-            if (enemies.every(enemy => !enemy.alive) && (!juggernaut || !juggernaut.alive)) {
+            // Powerup-player collisions
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const powerup = powerups[i];
+                if (powerup.alive) {
+                    const distance = Math.sqrt(
+                        Math.pow(powerup.x + powerup.width/2 - player.x, 2) + 
+                        Math.pow(powerup.y + powerup.height/2 - player.y, 2)
+                    );
+                    
+                    if (distance < 25) {
+                        powerups.splice(i, 1);
+                        
+                        if (powerup.type === 'life') {
+                            lives++;
+                            document.getElementById('lives').textContent = lives;
+                        } else if (powerup.type === 'cannon') {
+                            extraCannons = Math.min(extraCannons + 1, 4); // Max 4 extra cannons
+                            document.getElementById('cannons').textContent = extraCannons;
+                        }
+                        
+                        score += 25;
+                        document.getElementById('score').textContent = score;
+                    }
+                }
+            }
+            
+            // Check if all enemies are destroyed (but juggernaut always respawns)
+            if (enemies.every(enemy => !enemy.alive)) {
                 createEnemies();
+            }
+            
+            // Ensure there's always a juggernaut
+            if (!juggernaut || !juggernaut.alive) {
+                setTimeout(createJuggernaut, 1000);
             }
             
             // Check if enemies reach the player (less likely now with wrapping)
@@ -544,6 +710,7 @@
                 drawEnemyBullets();
                 drawEnemies();
                 drawJuggernaut();
+                drawPowerups();
             } else {
                 drawGameOver();
             }
