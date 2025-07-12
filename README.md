@@ -25,7 +25,7 @@ This isn't your ordinary Space Invaders! It's a **scary-cute** masterpiece that 
 - **PROGRESSIVE TERROR**: Eyes get redder as rings are destroyed
 
 ### 🔊 **COMPLETE AUDIO EXPERIENCE:**
-- 🎯 **Shooting**: Cute bell-ringing pew-pew sounds
+- 🎯 **Shooting**: Cute bell-ringing pew-pew sounds (OPTIONAL - only when holding LMB!)
 - 💥 **Explosions**: Satisfying booms when enemies die
 - 😢 **Enemy Hits**: Adorable 'pop' squeaks when enemies take damage
 - ⚡ **Powerups**: Happy chimes for life/cannon pickups
@@ -33,14 +33,32 @@ This isn't your ordinary Space Invaders! It's a **scary-cute** masterpiece that 
 - 🎵 **Background Music**: Spooky-cute ambient music
 - 🔇 **Mute Toggle**: Sound on/off with emoji indicators
 
+### 📁 **SOUND FILES SETUP:**
+
+To enable audio, create a `sounds/` folder next to the HTML file with these files:
+
+```
+sounds/
+├── shoot.mp3          (or shoot.wav) - Cute shooting sound
+├── enemy-hit.mp3      (or enemy-hit.wav) - Enemy damage sound  
+├── explosion.mp3      (or explosion.wav) - Enemy death explosion
+├── powerup.mp3        (or powerup.wav) - Powerup collection chime
+├── juggernaut-hit.mp3 (or juggernaut-hit.wav) - Boss damage roar
+└── background.mp3     (or background.wav) - Spooky-cute music
+```
+
+**SMART SHOOTING SOUNDS**: The game fires constantly, but shooting sounds only play when you hold down the left mouse button! This gives you **optional audio feedback** - hear the pew-pew when you want it, silence when you don't! 🎯🔇
+
 ## 🚀 **HOW TO PLAY:**
 
 1. **Download** `scary-cute-space-invaders.html`
-2. **Open** in any modern web browser
-3. **Move** your cute triangle ship with the mouse
-4. **Shoot** automatically (always firing!)
-5. **Collect** powerups for extra lives and cannons
-6. **Survive** the adorably terrifying enemy waves!
+2. **Create** a `sounds/` folder and add your sound files (see setup above)
+3. **Open** the HTML file in any modern web browser
+4. **Move** your cute triangle ship with the mouse
+5. **Shoot** automatically (always firing!)
+6. **Hold LMB** for optional shooting sound effects
+7. **Collect** powerups for extra lives and cannons
+8. **Survive** the adorably terrifying enemy waves!
 
 ## 🎨 **GAME FEATURES:**
 
@@ -104,4 +122,3 @@ Download `scary-cute-space-invaders.html` and prepare for the most adorably terr
 ---
 
 **Made with 💖 and a healthy dose of 👹 by the Codegen team!**
-

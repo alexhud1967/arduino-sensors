@@ -41,28 +41,47 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <!-- HTML5 Audio Elements for Scary-Cute Sound Effects -->
+    <!-- 
+    SOUND FILE ORGANIZATION:
+    Create a 'sounds/' folder next to this HTML file with these files:
+    
+    sounds/
+    ├── shoot.mp3          (or shoot.wav) - Cute shooting sound
+    ├── enemy-hit.mp3      (or enemy-hit.wav) - Enemy damage sound  
+    ├── explosion.mp3      (or explosion.wav) - Enemy death explosion
+    ├── powerup.mp3        (or powerup.wav) - Powerup collection chime
+    ├── juggernaut-hit.mp3 (or juggernaut-hit.wav) - Boss damage roar
+    └── background.mp3     (or background.wav) - Spooky-cute music
+    -->
+    
     <audio id="shootSound" preload="auto" volume="0.3">
-        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
+        <source src="sounds/shoot.mp3" type="audio/mpeg">
+        <source src="sounds/shoot.wav" type="audio/wav">
     </audio>
     
     <audio id="enemyHitSound" preload="auto" volume="0.4">
-        <source src="https://www.soundjay.com/misc/sounds/pop-01.wav" type="audio/wav">
+        <source src="sounds/enemy-hit.mp3" type="audio/mpeg">
+        <source src="sounds/enemy-hit.wav" type="audio/wav">
     </audio>
     
     <audio id="explosionSound" preload="auto" volume="0.5">
-        <source src="https://www.soundjay.com/misc/sounds/explosion-01.wav" type="audio/wav">
+        <source src="sounds/explosion.mp3" type="audio/mpeg">
+        <source src="sounds/explosion.wav" type="audio/wav">
     </audio>
     
     <audio id="powerupSound" preload="auto" volume="0.6">
-        <source src="https://www.soundjay.com/misc/sounds/chime-01.wav" type="audio/wav">
+        <source src="sounds/powerup.mp3" type="audio/mpeg">
+        <source src="sounds/powerup.wav" type="audio/wav">
     </audio>
     
     <audio id="juggernautHitSound" preload="auto" volume="0.7">
-        <source src="https://www.soundjay.com/misc/sounds/roar-01.wav" type="audio/wav">
+        <source src="sounds/juggernaut-hit.mp3" type="audio/mpeg">
+        <source src="sounds/juggernaut-hit.wav" type="audio/wav">
     </audio>
     
     <audio id="backgroundMusic" preload="auto" loop volume="0.2">
-        <source src="https://www.soundjay.com/misc/sounds/spooky-01.mp3" type="audio/mpeg">
+        <source src="sounds/background.mp3" type="audio/mpeg">
+        <source src="sounds/background.wav" type="audio/wav">
     </audio>
 
     <script>
@@ -262,6 +281,26 @@
             startBackgroundMusic(); // Start music on first interaction
         });
         
+        // Mouse click for optional shooting sounds
+        let mousePressed = false;
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left mouse button
+                mousePressed = true;
+                startBackgroundMusic(); // Start music on first interaction
+            }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) { // Left mouse button
+                mousePressed = false;
+            }
+        });
+        
+        // Prevent context menu on right click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+        
         // Draw cute triangle ship with face
         function drawPlayer() {
             // Black outline
@@ -347,7 +386,10 @@
         
         // Create bullet(s) - multiple if extra cannons
         function createBullet() {
-            playSound('shoot'); // Cute shooting sound!
+            // Only play shooting sound if mouse is pressed (optional audio feedback)
+            if (mousePressed) {
+                playSound('shoot'); // Cute shooting sound when you want to hear it!
+            }
             
             // Main cannon
             bullets.push({
