@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Invaders Clone</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        canvas {
+            border: 1px solid #333;
+            background: #000;
+        }
+        
+        .game-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-info">
+        <div>Score: <span id="score">0</span></div>
+        <div>Lives: <span id="lives">3</span></div>
+        <div>Extra Cannons: <span id="cannons">0</span></div>
+        <button id="muteButton" onclick="toggleMute()" style="margin-left: 20px; padding: 5px 10px;">🔊 Sound ON</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- HTML5 Audio Elements for Scary-Cute Sound Effects -->
+    <audio id="shootSound" preload="auto" volume="0.3">
+        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="enemyHitSound" preload="auto" volume="0.4">
+        <source src="https://www.soundjay.com/misc/sounds/pop-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="explosionSound" preload="auto" volume="0.5">
+        <source src="https://www.soundjay.com/misc/sounds/explosion-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="powerupSound" preload="auto" volume="0.6">
+        <source src="https://www.soundjay.com/misc/sounds/chime-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="juggernautHitSound" preload="auto" volume="0.7">
+        <source src="https://www.soundjay.com/misc/sounds/roar-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="backgroundMusic" preload="auto" loop volume="0.2">
+        <source src="https://www.soundjay.com/misc/sounds/spooky-01.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Game setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio system
+        let soundEnabled = true;
+        const sounds = {
+            shoot: document.getElementById('shootSound'),
+            enemyHit: document.getElementById('enemyHitSound'),
+            explosion: document.getElementById('explosionSound'),
+            powerup: document.getElementById('powerupSound'),
+            juggernautHit: document.getElementById('juggernautHitSound'),
+            background: document.getElementById('backgroundMusic')
+        };
+        
+        // Play sound function with error handling
+        function playSound(soundName) {
+            if (!soundEnabled) return;
+            try {
+                const sound = sounds[soundName];
+                if (sound) {
+                    sound.currentTime = 0; // Reset to beginning
+                    sound.play().catch(e => console.log('Audio play failed:', e));
+                }
+            } catch (e) {
+                console.log('Sound error:', e);
+            }
+        }
+        
+        // Mute toggle function
+        function toggleMute() {
+            soundEnabled = !soundEnabled;
+            const button = document.getElementById('muteButton');
+            if (soundEnabled) {
+                button.textContent = '🔊 Sound ON';
+                sounds.background.play().catch(e => console.log('Background music failed:', e));
+            } else {
+                button.textContent = '🔇 Sound OFF';
+                Object.values(sounds).forEach(sound => sound.pause());
+            }
+        }
+        
+        // Start background music when user first interacts
+        let musicStarted = false;
+        function startBackgroundMusic() {
+            if (!musicStarted && soundEnabled) {
+                sounds.background.play().catch(e => console.log('Background music failed:', e));
+                musicStarted = true;
+            }
+        }
+        
+        // Game state
+        let score = 0;
+        let lives = 3;
+        let gameRunning = true;
+        
+        // Mouse position
+        let mouseX = canvas.width / 2;
+        
+        // Stars for background
+        const stars = [];
+        const numStars = 100;
+        
+        // Initialize stars
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                speed: Math.random() * 2 + 0.5,
+                brightness: Math.random() * 0.8 + 0.2
+            });
+        }
+        
+        // Player ship
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            width: 20,
+            height: 20,
+            speed: 5
+        };
+        
+        // Bullets
+        const bullets = [];
+        const bulletSpeed = 7;
+        let lastBulletTime = 0;
+        const bulletInterval = 150; // milliseconds between bullets
+        
+        // Enemies
+        const enemies = [];
+        const enemyBullets = [];
+        const enemyBulletSpeed = 3;
+        let lastEnemyShootTime = 0;
+        const enemyShootInterval = 2000; // milliseconds between enemy shots
+        
+        // Enemy types (scary-cute creatures!)
+        const enemyTypes = [
+            { color: '#ff0000', width: 25, height: 15, health: 1, points: 10, shootChance: 0.3, emoji: '👹' }, // Angry demon
+            { color: '#ff8800', width: 30, height: 18, health: 2, points: 20, shootChance: 0.4, emoji: '🎃' }, // Spooky pumpkin
+            { color: '#ffff00', width: 20, height: 12, health: 1, points: 15, shootChance: 0.5, emoji: '⚡' }, // Lightning bolt
+            { color: '#8800ff', width: 35, height: 22, health: 3, points: 30, shootChance: 0.2, emoji: '👾' }, // Classic alien
+            { color: '#00ff88', width: 28, height: 16, health: 1, points: 25, shootChance: 0.6, emoji: '🐙' }  // Cute octopus
+        ];
+        
+        // Juggernaut
+        let juggernaut = null;
+        const juggernauts = [];
+        
+        // Powerups
+        const powerups = [];
+        let lastPowerupTime = 0;
+        const powerupInterval = 15000; // 15 seconds between powerups
+        
+        // Player cannons
+        let extraCannons = 0;
+        
+        // Initialize enemies
+        function createEnemies() {
+            enemies.length = 0;
+            enemyBullets.length = 0;
+            
+            // Create random enemies
+            for (let i = 0; i < 15; i++) {
+                const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                enemies.push({
+                    x: Math.random() * (canvas.width - type.width),
+                    y: Math.random() * 200 + 50,
+                    width: type.width,
+                    height: type.height,
+                    color: type.color,
+                    health: type.health,
+                    maxHealth: type.health,
+                    points: type.points,
+                    shootChance: type.shootChance,
+                    emoji: type.emoji,
+                    alive: true,
+                    speedX: (Math.random() - 0.5) * 2,
+                    speedY: Math.random() * 0.5 + 0.2,
+                    lastShot: 0,
+                    wobble: Math.random() * Math.PI * 2 // For cute wobbling animation
+                });
+            }
+            
+            // Always spawn a juggernaut
+            createJuggernaut();
+        }
+        
+        // Create scary-cute round juggernaut with 5 concentric rings
+        function createJuggernaut() {
+            juggernaut = {
+                x: canvas.width / 2 - 50,
+                y: 30,
+                baseRadius: 50, // Now it's round!
+                rings: 5, // 5 concentric rings
+                maxRings: 5,
+                alive: true,
+                speedX: 1,
+                speedY: 0.3,
+                lastShot: 0,
+                shakeX: 0,
+                shakeY: 0,
+                wobble: 0,
+                eyeWobble: 0,
+                colors: ['#ff0066', '#ff3388', '#ff66aa', '#ff99cc', '#ffccee'],
+                eyeColors: ['#ffffff', '#ffdddd', '#ffaaaa', '#ff7777', '#ff4444']
+            };
+        }
+        
+        // Create powerup
+        function createPowerup() {
+            const types = [
+                { type: 'life', color: '#00ff00', symbol: '♥' },
+                { type: 'cannon', color: '#ffff00', symbol: '⚡' }
+            ];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            powerups.push({
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 30,
+                height: 30,
+                type: type.type,
+                color: type.color,
+                symbol: type.symbol,
+                speedY: 2,
+                alive: true
+            });
+        }
+        
+        // Mouse movement
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            startBackgroundMusic(); // Start music on first interaction
+        });
+        
+        // Draw cute triangle ship with face
+        function drawPlayer() {
+            // Black outline
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y - player.height / 2 - 2);
+            ctx.lineTo(player.x - player.width / 2 - 2, player.y + player.height / 2 + 2);
+            ctx.lineTo(player.x + player.width / 2 + 2, player.y + player.height / 2 + 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Green triangle ship
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y - player.height / 2);
+            ctx.lineTo(player.x - player.width / 2, player.y + player.height / 2);
+            ctx.lineTo(player.x + player.width / 2, player.y + player.height / 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cute determined eyes
+            ctx.fillStyle = 'black';
+            ctx.fillRect(player.x - 6, player.y - 2, 3, 3);
+            ctx.fillRect(player.x + 3, player.y - 2, 3, 3);
+            
+            // Little smile
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y + 2, 3, 0, Math.PI);
+            ctx.stroke();
+        }
+        
+        // Draw stars (larger with black outline)
+        function drawStars() {
+            stars.forEach(star => {
+                ctx.globalAlpha = star.brightness;
+                
+                // Black outline
+                ctx.fillStyle = 'black';
+                ctx.fillRect(star.x - 1, star.y - 1, 4, 4);
+                
+                // White star
+                ctx.fillStyle = 'white';
+                ctx.fillRect(star.x, star.y, 2, 2);
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        // Update stars
+        function updateStars() {
+            stars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+        }
+        
+        // Draw bullets (larger with black outline)
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                // Black outline
+                ctx.fillStyle = 'black';
+                ctx.fillRect(bullet.x - 3, bullet.y - 8, 6, 16);
+                
+                // Yellow bullet
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(bullet.x - 2, bullet.y - 7, 4, 14);
+            });
+        }
+        
+        // Update bullets
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bulletSpeed;
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+        
+        // Create bullet(s) - multiple if extra cannons
+        function createBullet() {
+            playSound('shoot'); // Cute shooting sound!
+            
+            // Main cannon
+            bullets.push({
+                x: player.x,
+                y: player.y - player.height / 2
+            });
+            
+            // Extra cannons
+            for (let i = 0; i < extraCannons; i++) {
+                bullets.push({
+                    x: player.x + (i + 1) * 15 * (i % 2 === 0 ? 1 : -1),
+                    y: player.y - player.height / 2
+                });
+            }
+        }
+        
+        // Draw scary-cute enemies with emojis and wobbling
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    // Update wobble animation
+                    enemy.wobble += 0.1;
+                    const wobbleOffset = Math.sin(enemy.wobble) * 2;
+                    
+                    // Vary opacity based on health
+                    const healthRatio = enemy.health / enemy.maxHealth;
+                    ctx.globalAlpha = 0.3 + (healthRatio * 0.7);
+                    
+                    // Draw cute rounded shapes with black outlines
+                    const centerX = enemy.x + enemy.width/2;
+                    const centerY = enemy.y + enemy.height/2 + wobbleOffset;
+                    
+                    // Black outline (rounded)
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, Math.max(enemy.width, enemy.height)/2 + 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Colored body (rounded)
+                    ctx.fillStyle = enemy.color;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, Math.max(enemy.width, enemy.height)/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Cute emoji face
+                    ctx.font = `${Math.min(enemy.width, enemy.height)}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(enemy.emoji, centerX, centerY + 4);
+                    
+                    // Scary glowing eyes when damaged
+                    if (healthRatio < 1) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.globalAlpha = (1 - healthRatio) * 0.8;
+                        ctx.fillRect(centerX - 4, centerY - 6, 2, 2);
+                        ctx.fillRect(centerX + 2, centerY - 6, 2, 2);
+                    }
+                }
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        // Draw scary-cute round juggernaut with concentric rings and face
+        function drawJuggernaut() {
+            if (juggernaut && juggernaut.alive) {
+                // Update animations
+                juggernaut.wobble += 0.05;
+                juggernaut.eyeWobble += 0.15;
+                
+                // Calculate shake based on damage
+                const damageRatio = 1 - (juggernaut.rings / juggernaut.maxRings);
+                const shakeIntensity = damageRatio * 8;
+                juggernaut.shakeX = (Math.random() - 0.5) * shakeIntensity;
+                juggernaut.shakeY = (Math.random() - 0.5) * shakeIntensity;
+                
+                // Size increases as rings are destroyed
+                const sizeMultiplier = 1 + damageRatio * 0.8;
+                const wobbleOffset = Math.sin(juggernaut.wobble) * 3;
+                const centerX = juggernaut.x + juggernaut.baseRadius + juggernaut.shakeX;
+                const centerY = juggernaut.y + juggernaut.baseRadius + juggernaut.shakeY + wobbleOffset;
+                
+                // Draw concentric ROUND rings from outside to inside
+                for (let ring = juggernaut.rings - 1; ring >= 0; ring--) {
+                    const ringRadius = (ring + 1) * 12 * sizeMultiplier;
+                    const color = juggernaut.colors[ring];
+                    
+                    // Black outline (round)
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, ringRadius + 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Colored ring (round)
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw scary-cute face on the innermost ring
+                if (juggernaut.rings > 0) {
+                    const faceSize = juggernaut.rings * 8 * sizeMultiplier;
+                    
+                    // Angry/cute eyes that get scarier as rings are destroyed
+                    const eyeColor = juggernaut.eyeColors[Math.min(4, 5 - juggernaut.rings)];
+                    const eyeWobble = Math.sin(juggernaut.eyeWobble) * 2;
+                    
+                    ctx.fillStyle = eyeColor;
+                    // Left eye
+                    ctx.beginPath();
+                    ctx.arc(centerX - faceSize/3, centerY - faceSize/4 + eyeWobble, faceSize/8, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Right eye
+                    ctx.beginPath();
+                    ctx.arc(centerX + faceSize/3, centerY - faceSize/4 - eyeWobble, faceSize/8, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Mouth that gets scarier as rings are destroyed
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    if (juggernaut.rings > 3) {
+                        // Happy smile when healthy
+                        ctx.arc(centerX, centerY + faceSize/6, faceSize/4, 0, Math.PI);
+                    } else if (juggernaut.rings > 1) {
+                        // Worried frown
+                        ctx.arc(centerX, centerY + faceSize/3, faceSize/4, Math.PI, 0);
+                    } else {
+                        // SCARY ANGRY MOUTH
+                        ctx.moveTo(centerX - faceSize/3, centerY + faceSize/4);
+                        ctx.lineTo(centerX, centerY + faceSize/6);
+                        ctx.lineTo(centerX + faceSize/3, centerY + faceSize/4);
+                    }
+                    ctx.stroke();
+                }
+                
+                // Draw ring counter with cute font
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`💍 ${juggernaut.rings}`, centerX, juggernaut.y - 25);
+            }
+        }
+        
+        // Draw enemy bullets (larger with black outline)
+        function drawEnemyBullets() {
+            enemyBullets.forEach(bullet => {
+                // Black outline
+                ctx.fillStyle = 'black';
+                ctx.fillRect(bullet.x - 3, bullet.y - 5, 6, 10);
+                
+                // Red bullet
+                ctx.fillStyle = '#ff4444';
+                ctx.fillRect(bullet.x - 2, bullet.y - 4, 4, 8);
+            });
+        }
+        
+        // Draw powerups
+        function drawPowerups() {
+            powerups.forEach(powerup => {
+                if (powerup.alive) {
+                    // Black outline
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(powerup.x - 2, powerup.y - 2, powerup.width + 4, powerup.height + 4);
+                    
+                    // Powerup background
+                    ctx.fillStyle = powerup.color;
+                    ctx.fillRect(powerup.x, powerup.y, powerup.width, powerup.height);
+                    
+                    // Symbol
+                    ctx.fillStyle = 'black';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(powerup.symbol, powerup.x + powerup.width/2, powerup.y + powerup.height/2 + 7);
+                }
+            });
+        }
+        
+        // Update enemies
+        function updateEnemies() {
+            const currentTime = Date.now();
+            
+            enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    // Independent movement
+                    enemy.x += enemy.speedX;
+                    enemy.y += enemy.speedY;
+                    
+                    // Bounce off walls
+                    if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+                        enemy.speedX *= -1;
+                    }
+                    
+                    // Wrap around vertically (come from top when they go off bottom)
+                    if (enemy.y > canvas.height) {
+                        enemy.y = -enemy.height;
+                        enemy.x = Math.random() * (canvas.width - enemy.width);
+                    }
+                    
+                    // Enemy shooting
+                    if (currentTime - enemy.lastShot > 3000 && Math.random() < enemy.shootChance * 0.01) {
+                        enemyBullets.push({
+                            x: enemy.x + enemy.width / 2,
+                            y: enemy.y + enemy.height,
+                            speedX: 0,
+                            speedY: enemyBulletSpeed
+                        });
+                        enemy.lastShot = currentTime;
+                    }
+                }
+            });
+            
+            // Update juggernaut
+            if (juggernaut && juggernaut.alive) {
+                juggernaut.x += juggernaut.speedX;
+                juggernaut.y += juggernaut.speedY;
+                
+                // Bounce off walls (using radius now)
+                if (juggernaut.x <= 0 || juggernaut.x + juggernaut.baseRadius * 2 >= canvas.width) {
+                    juggernaut.speedX *= -1;
+                }
+                
+                // Keep in upper area
+                if (juggernaut.y > 150) {
+                    juggernaut.speedY = -Math.abs(juggernaut.speedY);
+                }
+                if (juggernaut.y < 20) {
+                    juggernaut.speedY = Math.abs(juggernaut.speedY);
+                }
+                
+                // Juggernaut shooting (more bullets as rings are destroyed)
+                if (currentTime - juggernaut.lastShot > 1500) {
+                    const bulletCount = 6 - juggernaut.rings; // More bullets with fewer rings
+                    for (let i = 0; i < bulletCount; i++) {
+                        enemyBullets.push({
+                            x: juggernaut.x + juggernaut.baseRadius + (i - bulletCount/2) * 15,
+                            y: juggernaut.y + juggernaut.baseRadius * 2,
+                            speedX: (i - bulletCount/2) * 0.8,
+                            speedY: enemyBulletSpeed + 1
+                        });
+                    }
+                    juggernaut.lastShot = currentTime;
+                }
+            }
+            
+            // Update powerups
+            const currentTime2 = Date.now();
+            if (currentTime2 - lastPowerupTime > powerupInterval) {
+                createPowerup();
+                lastPowerupTime = currentTime2;
+            }
+            
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                powerups[i].y += powerups[i].speedY;
+                if (powerups[i].y > canvas.height) {
+                    powerups.splice(i, 1);
+                }
+            }
+        }
+        
+        // Update enemy bullets
+        function updateEnemyBullets() {
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                enemyBullets[i].x += enemyBullets[i].speedX;
+                enemyBullets[i].y += enemyBullets[i].speedY;
+                
+                if (enemyBullets[i].y > canvas.height || 
+                    enemyBullets[i].x < 0 || 
+                    enemyBullets[i].x > canvas.width) {
+                    enemyBullets.splice(i, 1);
+                }
+            }
+        }
+        
+        // Juggernaut core explosion (when all rings destroyed)
+        function explodeJuggernaut() {
+            const centerX = juggernaut.x + juggernaut.baseRadius;
+            const centerY = juggernaut.y + juggernaut.baseRadius;
+            
+            // Create massive sunburst of bullets
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
+                enemyBullets.push({
+                    x: centerX,
+                    y: centerY,
+                    speedX: Math.cos(angle) * 5,
+                    speedY: Math.sin(angle) * 5
+                });
+            }
+            
+            // Add chaotic random bullets
+            for (let i = 0; i < 20; i++) {
+                const randomAngle = Math.random() * Math.PI * 2;
+                enemyBullets.push({
+                    x: centerX + (Math.random() - 0.5) * 60,
+                    y: centerY + (Math.random() - 0.5) * 60,
+                    speedX: Math.cos(randomAngle) * (3 + Math.random() * 4),
+                    speedY: Math.sin(randomAngle) * (3 + Math.random() * 4)
+                });
+            }
+            
+            juggernaut = null;
+            score += 500; // Massive bonus for destroying all rings
+            document.getElementById('score').textContent = score;
+            
+            // Immediately spawn a new juggernaut
+            setTimeout(createJuggernaut, 2000);
+        }
+        
+        // Collision detection
+        function checkCollisions() {
+            // Player bullet-enemy collisions
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = 0; j < enemies.length; j++) {
+                    const bullet = bullets[i];
+                    const enemy = enemies[j];
+                    
+                    if (enemy.alive && 
+                        bullet.x >= enemy.x && 
+                        bullet.x <= enemy.x + enemy.width &&
+                        bullet.y >= enemy.y && 
+                        bullet.y <= enemy.y + enemy.height) {
+                        
+                        enemy.health--;
+                        bullets.splice(i, 1);
+                        playSound('enemyHit'); // Adorable enemy hit sound!
+                        
+                        if (enemy.health <= 0) {
+                            enemy.alive = false;
+                            score += enemy.points;
+                            document.getElementById('score').textContent = score;
+                            playSound('explosion'); // Satisfying explosion!
+                        }
+                        break;
+                    }
+                }
+                
+                // Player bullet-juggernaut collisions
+                if (juggernaut && juggernaut.alive && bullets[i]) {
+                    const bullet = bullets[i];
+                    const centerX = juggernaut.x + juggernaut.baseRadius;
+                    const centerY = juggernaut.y + juggernaut.baseRadius;
+                    const distance = Math.sqrt(
+                        Math.pow(bullet.x - centerX, 2) + 
+                        Math.pow(bullet.y - centerY, 2)
+                    );
+                    
+                    // Check if bullet hits any ring (using radius now)
+                    const outerRingRadius = juggernaut.rings * 12;
+                    if (distance <= outerRingRadius) {
+                        juggernaut.rings--;
+                        bullets.splice(i, 1);
+                        score += 50; // Points for each ring destroyed
+                        document.getElementById('score').textContent = score;
+                        playSound('juggernautHit'); // Scary juggernaut roar!
+                        
+                        if (juggernaut.rings <= 0) {
+                            explodeJuggernaut();
+                            playSound('explosion'); // Final explosion!
+                        }
+                    }
+                }
+            }
+            
+            // Enemy bullet-player collisions
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = enemyBullets[i];
+                const distance = Math.sqrt(
+                    Math.pow(bullet.x - player.x, 2) + 
+                    Math.pow(bullet.y - player.y, 2)
+                );
+                
+                if (distance < 15) {
+                    enemyBullets.splice(i, 1);
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    if (lives <= 0) {
+                        gameRunning = false;
+                    }
+                }
+            }
+            
+            // Powerup-player collisions
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const powerup = powerups[i];
+                if (powerup.alive) {
+                    const distance = Math.sqrt(
+                        Math.pow(powerup.x + powerup.width/2 - player.x, 2) + 
+                        Math.pow(powerup.y + powerup.height/2 - player.y, 2)
+                    );
+                    
+                    if (distance < 25) {
+                        powerups.splice(i, 1);
+                        
+                        if (powerup.type === 'life') {
+                            lives++;
+                            document.getElementById('lives').textContent = lives;
+                        } else if (powerup.type === 'cannon') {
+                            extraCannons = Math.min(extraCannons + 1, 4); // Max 4 extra cannons
+                            document.getElementById('cannons').textContent = extraCannons;
+                        }
+                        
+                        score += 25;
+                        document.getElementById('score').textContent = score;
+                        playSound('powerup'); // Happy powerup chime!
+                    }
+                }
+            }
+            
+            // Check if all enemies are destroyed (but juggernaut always respawns)
+            if (enemies.every(enemy => !enemy.alive)) {
+                createEnemies();
+            }
+            
+            // Ensure there's always a juggernaut
+            if (!juggernaut || !juggernaut.alive) {
+                setTimeout(createJuggernaut, 1000);
+            }
+            
+            // Check if enemies reach the player (less likely now with wrapping)
+            enemies.forEach(enemy => {
+                if (enemy.alive && enemy.y + enemy.height >= player.y - player.height / 2) {
+                    const distance = Math.sqrt(
+                        Math.pow(enemy.x + enemy.width/2 - player.x, 2) + 
+                        Math.pow(enemy.y + enemy.height/2 - player.y, 2)
+                    );
+                    
+                    if (distance < 20) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        enemy.alive = false;
+                        if (lives <= 0) {
+                            gameRunning = false;
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Game over screen
+        function drawGameOver() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#ff0000';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '24px Arial';
+            ctx.fillText('Final Score: ' + score, canvas.width / 2, canvas.height / 2 + 50);
+            ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 80);
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (gameRunning) {
+                // Update player position based on mouse
+                player.x = mouseX;
+                
+                // Keep player within bounds
+                if (player.x < player.width / 2) player.x = player.width / 2;
+                if (player.x > canvas.width - player.width / 2) player.x = canvas.width - player.width / 2;
+                
+                // Auto-shoot bullets
+                const currentTime = Date.now();
+                if (currentTime - lastBulletTime > bulletInterval) {
+                    createBullet();
+                    lastBulletTime = currentTime;
+                }
+                
+                // Update game objects
+                updateStars();
+                updateBullets();
+                updateEnemyBullets();
+                updateEnemies();
+                checkCollisions();
+                
+                // Draw everything
+                drawStars();
+                drawPlayer();
+                drawBullets();
+                drawEnemyBullets();
+                drawEnemies();
+                drawJuggernaut();
+                drawPowerups();
+            } else {
+                drawGameOver();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize game
+        createEnemies();
+        gameLoop();
+    </script>
+</body>
+</html>
