@@ -1,124 +1,42 @@
-# 👹💕 Scary-Cute Space Invaders 💕👹
+# 🔧 Arduino Sensors & Automation Projects 🔧
 
-A delightfully terrifying HTML5 Space Invaders game that perfectly balances **ADORABLE** and **SCARY**!
+Various and Interesting Sensor and Automation Projects using Arduino and ESP32 platforms.
 
-![Game Preview](https://img.shields.io/badge/Game-Scary%20Cute-ff69b4?style=for-the-badge&logo=gamepad)
+## 📁 **PROJECT CATEGORIES:**
 
-## 🎮 **WHAT MAKES IT SPECIAL?**
+### 🎮 **[HTML5 Games](./games/)**
+Browser-based games collection including:
+- 👹💕 **Scary-Cute Space Invaders** - Adorably terrifying space battle!
 
-This isn't your ordinary Space Invaders! It's a **scary-cute** masterpiece that will make you go "Awww!" and "AHHH!" at the same time!
+### 🌡️ **Sensor Projects**
+- Temperature and humidity monitoring
+- Environmental data logging
+- OLED display integration
 
-### 👾 **EMOJI ENEMY ARMY:**
-- **👹 Red Demons** - Angry but somehow adorable
-- **🎃 Spooky Pumpkins** - Halloween cute-scary vibes  
-- **⚡ Lightning Bolts** - Energetic and zippy
-- **👾 Classic Aliens** - Retro space invader charm
-- **🐙 Cute Octopi** - Tentacled but friendly
-
-### 🎭 **EMOTIONAL JUGGERNAUT BOSS:**
-- **PERFECTLY ROUND** with concentric circular rings! ⭕
-- **EMOTIONAL FACE** that changes as it gets damaged:
-  - 😊 **5 rings**: Happy, innocent smile
-  - 😟 **3-4 rings**: Worried, concerned frown  
-  - 😡 **1-2 rings**: SCARY ANGRY ZIGZAG MOUTH!
-- **WOBBLING ANIMATIONS**: Gentle up/down wobble + independent eye wobbling
-- **PROGRESSIVE TERROR**: Eyes get redder as rings are destroyed
-
-### 🔊 **COMPLETE AUDIO EXPERIENCE:**
-- 🎯 **Shooting**: Cute bell-ringing pew-pew sounds (OPTIONAL - only when holding LMB!)
-- 💥 **Explosions**: Satisfying booms when enemies die
-- 😢 **Enemy Hits**: Adorable 'pop' squeaks when enemies take damage
-- ⚡ **Powerups**: Happy chimes for life/cannon pickups
-- 👹 **Juggernaut Roars**: Scary roars that get more intense
-- 🎵 **Background Music**: Spooky-cute ambient music
-- 🔇 **Mute Toggle**: Sound on/off with emoji indicators
-
-### 📁 **SOUND FILES SETUP:**
-
-To enable audio, create a `sounds/` folder next to the HTML file with these files:
-
-```
-sounds/
-├── shoot.mp3          (or shoot.wav) - Cute shooting sound
-├── enemy-hit.mp3      (or enemy-hit.wav) - Enemy damage sound  
-├── explosion.mp3      (or explosion.wav) - Enemy death explosion
-├── powerup.mp3        (or powerup.wav) - Powerup collection chime
-├── juggernaut-hit.mp3 (or juggernaut-hit.wav) - Boss damage roar
-└── background.mp3     (or background.wav) - Spooky-cute music
-```
-
-**SMART SHOOTING SOUNDS**: The game fires constantly, but shooting sounds only play when you hold down the left mouse button! This gives you **optional audio feedback** - hear the pew-pew when you want it, silence when you don't! 🎯🔇
-
-## 🚀 **HOW TO PLAY:**
-
-1. **Download** `scary-cute-space-invaders.html`
-2. **Create** a `sounds/` folder and add your sound files (see setup above)
-3. **Open** the HTML file in any modern web browser
-4. **Move** your cute triangle ship with the mouse
-5. **Shoot** automatically (always firing!)
-6. **Hold LMB** for optional shooting sound effects
-7. **Collect** powerups for extra lives and cannons
-8. **Survive** the adorably terrifying enemy waves!
-
-## 🎨 **GAME FEATURES:**
-
-### ✨ **Visual Magic:**
-- **Starfield Background** - Twinkling space atmosphere
-- **Round Enemy Bodies** - All enemies are adorable circles
-- **Individual Wobbling** - Each enemy wobbles at its own rhythm
-- **Glowing Red Eyes** - When damaged, enemies get scary red glowing eyes
-- **Cute Player Ship** - Triangle with determined eyes and a little smile
-- **Smooth Animations** - Everything gently bobs and wobbles
-
-### 🎮 **Gameplay Features:**
-- **Progressive Difficulty** - Enemies get faster and more numerous
-- **Powerup System** - Collect hearts for extra lives, stars for extra cannons
-- **Multi-Cannon Shooting** - Up to 4 extra cannons for bullet hell action
-- **Boss Battle** - Epic juggernaut with emotional transformation
-- **Score System** - Points for everything you destroy
-
-### 🛠️ **Technical Excellence:**
-- **Pure HTML5** - No external dependencies
-- **Responsive Design** - Works on any screen size
-- **Optimized Performance** - Smooth 60fps gameplay
-- **Cross-Browser Compatible** - Works in all modern browsers
-- **HTML5 Audio** - Efficient sound system with proper error handling
-
-## 🎯 **THE PERFECT BALANCE:**
-
-This game achieves something magical - it's simultaneously:
-- **CUTE**: Emoji faces, wobbling animations, happy expressions
-- **SCARY**: Angry faces when damaged, red glowing eyes, terrifying final boss form
-- **ENGAGING**: The emotional progression makes you feel bad for hurting the cute creatures... but they're shooting at you!
-
-The juggernaut's transformation from happy 😊 → worried 😟 → TERRIFYING 😡 creates genuine emotional investment in the battle!
-
-## 🏆 **ACHIEVEMENTS TO UNLOCK:**
-- Survive 10 waves
-- Collect 5 powerups in one game
-- Defeat the juggernaut 3 times
-- Score over 5000 points
-- Play with sound on for the full experience!
-
-## 💝 **CREDITS:**
-
-Created with love by Codegen AI - where scary meets cute in perfect harmony! 
-
-**Technologies Used:**
-- HTML5 Canvas for graphics
-- JavaScript for game logic
-- HTML5 Audio for sound effects
-- CSS for styling
-- Pure emoji magic for characters! ✨
+### 💡 **Automation Projects**
+- LED control systems
+- Pool light controllers
+- Smart home integrations
 
 ---
 
-### 🎮 **READY TO PLAY?**
+## 🚀 **GETTING STARTED:**
 
-Download `scary-cute-space-invaders.html` and prepare for the most adorably terrifying space battle of your life! 
-
-*Warning: May cause uncontrollable smiling followed by nervous laughter* 😅👻
+Each project folder contains:
+- Source code files
+- README with specific instructions
+- Wiring diagrams (where applicable)
+- Required libraries and dependencies
 
 ---
 
-**Made with 💖 and a healthy dose of 👹 by the Codegen team!**
+## 🛠️ **HARDWARE PLATFORMS:**
+
+- **Arduino Uno/Nano** - Basic sensor projects
+- **ESP32** - WiFi-enabled projects with web interfaces
+- **Various Sensors** - DHT11/22, OLED displays, LEDs, etc.
+
+---
+
+**Happy Making! 🔧⚡**
+
