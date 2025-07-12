@@ -36,13 +36,86 @@
         <div>Score: <span id="score">0</span></div>
         <div>Lives: <span id="lives">3</span></div>
         <div>Extra Cannons: <span id="cannons">0</span></div>
+        <button id="muteButton" onclick="toggleMute()" style="margin-left: 20px; padding: 5px 10px;">🔊 Sound ON</button>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- HTML5 Audio Elements for Scary-Cute Sound Effects -->
+    <audio id="shootSound" preload="auto" volume="0.3">
+        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="enemyHitSound" preload="auto" volume="0.4">
+        <source src="https://www.soundjay.com/misc/sounds/pop-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="explosionSound" preload="auto" volume="0.5">
+        <source src="https://www.soundjay.com/misc/sounds/explosion-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="powerupSound" preload="auto" volume="0.6">
+        <source src="https://www.soundjay.com/misc/sounds/chime-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="juggernautHitSound" preload="auto" volume="0.7">
+        <source src="https://www.soundjay.com/misc/sounds/roar-01.wav" type="audio/wav">
+    </audio>
+    
+    <audio id="backgroundMusic" preload="auto" loop volume="0.2">
+        <source src="https://www.soundjay.com/misc/sounds/spooky-01.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         // Game setup
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // Audio system
+        let soundEnabled = true;
+        const sounds = {
+            shoot: document.getElementById('shootSound'),
+            enemyHit: document.getElementById('enemyHitSound'),
+            explosion: document.getElementById('explosionSound'),
+            powerup: document.getElementById('powerupSound'),
+            juggernautHit: document.getElementById('juggernautHitSound'),
+            background: document.getElementById('backgroundMusic')
+        };
+        
+        // Play sound function with error handling
+        function playSound(soundName) {
+            if (!soundEnabled) return;
+            try {
+                const sound = sounds[soundName];
+                if (sound) {
+                    sound.currentTime = 0; // Reset to beginning
+                    sound.play().catch(e => console.log('Audio play failed:', e));
+                }
+            } catch (e) {
+                console.log('Sound error:', e);
+            }
+        }
+        
+        // Mute toggle function
+        function toggleMute() {
+            soundEnabled = !soundEnabled;
+            const button = document.getElementById('muteButton');
+            if (soundEnabled) {
+                button.textContent = '🔊 Sound ON';
+                sounds.background.play().catch(e => console.log('Background music failed:', e));
+            } else {
+                button.textContent = '🔇 Sound OFF';
+                Object.values(sounds).forEach(sound => sound.pause());
+            }
+        }
+        
+        // Start background music when user first interacts
+        let musicStarted = false;
+        function startBackgroundMusic() {
+            if (!musicStarted && soundEnabled) {
+                sounds.background.play().catch(e => console.log('Background music failed:', e));
+                musicStarted = true;
+            }
+        }
         
         // Game state
         let score = 0;
@@ -186,6 +259,7 @@
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
+            startBackgroundMusic(); // Start music on first interaction
         });
         
         // Draw cute triangle ship with face
@@ -273,6 +347,8 @@
         
         // Create bullet(s) - multiple if extra cannons
         function createBullet() {
+            playSound('shoot'); // Cute shooting sound!
+            
             // Main cannon
             bullets.push({
                 x: player.x,
@@ -595,11 +671,13 @@
                         
                         enemy.health--;
                         bullets.splice(i, 1);
+                        playSound('enemyHit'); // Adorable enemy hit sound!
                         
                         if (enemy.health <= 0) {
                             enemy.alive = false;
                             score += enemy.points;
                             document.getElementById('score').textContent = score;
+                            playSound('explosion'); // Satisfying explosion!
                         }
                         break;
                     }
@@ -622,9 +700,11 @@
                         bullets.splice(i, 1);
                         score += 50; // Points for each ring destroyed
                         document.getElementById('score').textContent = score;
+                        playSound('juggernautHit'); // Scary juggernaut roar!
                         
                         if (juggernaut.rings <= 0) {
                             explodeJuggernaut();
+                            playSound('explosion'); // Final explosion!
                         }
                     }
                 }
@@ -670,6 +750,7 @@
                         
                         score += 25;
                         document.getElementById('score').textContent = score;
+                        playSound('powerup'); // Happy powerup chime!
                     }
                 }
             }
