@@ -82,27 +82,72 @@
         
         // Enemies
         const enemies = [];
-        const enemyRows = 5;
-        const enemyCols = 10;
-        const enemyWidth = 30;
-        const enemyHeight = 20;
-        const enemySpeed = 1;
-        let enemyDirection = 1;
+        const enemyBullets = [];
+        const enemyBulletSpeed = 3;
+        let lastEnemyShootTime = 0;
+        const enemyShootInterval = 2000; // milliseconds between enemy shots
+        
+        // Enemy types
+        const enemyTypes = [
+            { color: '#ff0000', width: 25, height: 15, health: 1, points: 10, shootChance: 0.3 }, // Red basic
+            { color: '#ff8800', width: 30, height: 18, health: 2, points: 20, shootChance: 0.4 }, // Orange medium
+            { color: '#ffff00', width: 20, height: 12, health: 1, points: 15, shootChance: 0.5 }, // Yellow fast
+            { color: '#8800ff', width: 35, height: 22, health: 3, points: 30, shootChance: 0.2 }, // Purple heavy
+            { color: '#00ff88', width: 28, height: 16, health: 1, points: 25, shootChance: 0.6 }  // Green sniper
+        ];
+        
+        // Juggernaut
+        let juggernaut = null;
+        const juggernauts = [];
         
         // Initialize enemies
         function createEnemies() {
             enemies.length = 0;
-            for (let row = 0; row < enemyRows; row++) {
-                for (let col = 0; col < enemyCols; col++) {
-                    enemies.push({
-                        x: col * (enemyWidth + 10) + 50,
-                        y: row * (enemyHeight + 10) + 50,
-                        width: enemyWidth,
-                        height: enemyHeight,
-                        alive: true
-                    });
-                }
+            enemyBullets.length = 0;
+            
+            // Create random enemies
+            for (let i = 0; i < 15; i++) {
+                const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                enemies.push({
+                    x: Math.random() * (canvas.width - type.width),
+                    y: Math.random() * 200 + 50,
+                    width: type.width,
+                    height: type.height,
+                    color: type.color,
+                    health: type.health,
+                    maxHealth: type.health,
+                    points: type.points,
+                    shootChance: type.shootChance,
+                    alive: true,
+                    speedX: (Math.random() - 0.5) * 2,
+                    speedY: Math.random() * 0.5 + 0.2,
+                    lastShot: 0
+                });
             }
+            
+            // Maybe spawn a juggernaut (20% chance)
+            if (Math.random() < 0.2) {
+                createJuggernaut();
+            }
+        }
+        
+        // Create juggernaut
+        function createJuggernaut() {
+            juggernaut = {
+                x: canvas.width / 2 - 40,
+                y: 30,
+                width: 80,
+                height: 60,
+                health: 15,
+                maxHealth: 15,
+                alive: true,
+                speedX: 1,
+                speedY: 0.3,
+                lastShot: 0,
+                shakeX: 0,
+                shakeY: 0,
+                color: '#ff0066'
+            };
         }
         
         // Mouse movement
@@ -171,47 +216,200 @@
         
         // Draw enemies
         function drawEnemies() {
-            ctx.fillStyle = '#ff0000';
             enemies.forEach(enemy => {
                 if (enemy.alive) {
-                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    // Vary opacity based on health
+                    const healthRatio = enemy.health / enemy.maxHealth;
+                    ctx.fillStyle = enemy.color;
+                    ctx.globalAlpha = 0.3 + (healthRatio * 0.7);
+                    
+                    // Draw different shapes based on color
+                    if (enemy.color === '#ffff00') { // Yellow - diamond
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x + enemy.width/2, enemy.y);
+                        ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height/2);
+                        ctx.lineTo(enemy.x + enemy.width/2, enemy.y + enemy.height);
+                        ctx.lineTo(enemy.x, enemy.y + enemy.height/2);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (enemy.color === '#00ff88') { // Green - circle
+                        ctx.beginPath();
+                        ctx.arc(enemy.x + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (enemy.color === '#8800ff') { // Purple - triangle
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.x + enemy.width/2, enemy.y);
+                        ctx.lineTo(enemy.x, enemy.y + enemy.height);
+                        ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else { // Rectangle for others
+                        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    }
                 }
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        // Draw juggernaut
+        function drawJuggernaut() {
+            if (juggernaut && juggernaut.alive) {
+                const healthRatio = juggernaut.health / juggernaut.maxHealth;
+                
+                // Calculate shake based on damage
+                const shakeIntensity = (1 - healthRatio) * 5;
+                juggernaut.shakeX = (Math.random() - 0.5) * shakeIntensity;
+                juggernaut.shakeY = (Math.random() - 0.5) * shakeIntensity;
+                
+                // Size increases as it takes damage
+                const sizeMultiplier = 1 + (1 - healthRatio) * 0.5;
+                const drawWidth = juggernaut.width * sizeMultiplier;
+                const drawHeight = juggernaut.height * sizeMultiplier;
+                
+                // Color gets more intense as it takes damage
+                const intensity = Math.floor(255 * (1 - healthRatio * 0.5));
+                ctx.fillStyle = `rgb(${intensity}, 0, ${Math.floor(intensity * 0.4)})`;
+                
+                // Draw with shake
+                const drawX = juggernaut.x + juggernaut.shakeX - (drawWidth - juggernaut.width) / 2;
+                const drawY = juggernaut.y + juggernaut.shakeY - (drawHeight - juggernaut.height) / 2;
+                
+                ctx.fillRect(drawX, drawY, drawWidth, drawHeight);
+                
+                // Draw health bar
+                const barWidth = juggernaut.width;
+                const barHeight = 6;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(juggernaut.x, juggernaut.y - 15, barWidth, barHeight);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(juggernaut.x, juggernaut.y - 15, barWidth * healthRatio, barHeight);
+            }
+        }
+        
+        // Draw enemy bullets
+        function drawEnemyBullets() {
+            ctx.fillStyle = '#ff4444';
+            enemyBullets.forEach(bullet => {
+                ctx.fillRect(bullet.x - 1, bullet.y - 3, 2, 6);
             });
         }
         
         // Update enemies
         function updateEnemies() {
-            let moveDown = false;
+            const currentTime = Date.now();
             
-            // Check if any enemy hits the edge
             enemies.forEach(enemy => {
                 if (enemy.alive) {
-                    if ((enemy.x <= 0 && enemyDirection === -1) || 
-                        (enemy.x + enemy.width >= canvas.width && enemyDirection === 1)) {
-                        moveDown = true;
+                    // Independent movement
+                    enemy.x += enemy.speedX;
+                    enemy.y += enemy.speedY;
+                    
+                    // Bounce off walls
+                    if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+                        enemy.speedX *= -1;
+                    }
+                    
+                    // Wrap around vertically (come from top when they go off bottom)
+                    if (enemy.y > canvas.height) {
+                        enemy.y = -enemy.height;
+                        enemy.x = Math.random() * (canvas.width - enemy.width);
+                    }
+                    
+                    // Enemy shooting
+                    if (currentTime - enemy.lastShot > 3000 && Math.random() < enemy.shootChance * 0.01) {
+                        enemyBullets.push({
+                            x: enemy.x + enemy.width / 2,
+                            y: enemy.y + enemy.height,
+                            speedX: 0,
+                            speedY: enemyBulletSpeed
+                        });
+                        enemy.lastShot = currentTime;
                     }
                 }
             });
             
-            if (moveDown) {
-                enemyDirection *= -1;
-                enemies.forEach(enemy => {
-                    if (enemy.alive) {
-                        enemy.y += 20;
+            // Update juggernaut
+            if (juggernaut && juggernaut.alive) {
+                juggernaut.x += juggernaut.speedX;
+                juggernaut.y += juggernaut.speedY;
+                
+                // Bounce off walls
+                if (juggernaut.x <= 0 || juggernaut.x + juggernaut.width >= canvas.width) {
+                    juggernaut.speedX *= -1;
+                }
+                
+                // Keep in upper area
+                if (juggernaut.y > 150) {
+                    juggernaut.speedY = -Math.abs(juggernaut.speedY);
+                }
+                if (juggernaut.y < 20) {
+                    juggernaut.speedY = Math.abs(juggernaut.speedY);
+                }
+                
+                // Juggernaut shooting
+                if (currentTime - juggernaut.lastShot > 1500) {
+                    // Shoot multiple bullets
+                    for (let i = 0; i < 3; i++) {
+                        enemyBullets.push({
+                            x: juggernaut.x + juggernaut.width / 2 + (i - 1) * 20,
+                            y: juggernaut.y + juggernaut.height,
+                            speedX: (i - 1) * 1,
+                            speedY: enemyBulletSpeed + 1
+                        });
                     }
+                    juggernaut.lastShot = currentTime;
+                }
+            }
+        }
+        
+        // Update enemy bullets
+        function updateEnemyBullets() {
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                enemyBullets[i].x += enemyBullets[i].speedX;
+                enemyBullets[i].y += enemyBullets[i].speedY;
+                
+                if (enemyBullets[i].y > canvas.height || 
+                    enemyBullets[i].x < 0 || 
+                    enemyBullets[i].x > canvas.width) {
+                    enemyBullets.splice(i, 1);
+                }
+            }
+        }
+        
+        // Juggernaut explosion
+        function explodeJuggernaut() {
+            const centerX = juggernaut.x + juggernaut.width / 2;
+            const centerY = juggernaut.y + juggernaut.height / 2;
+            
+            // Create sunburst of bullets
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+                enemyBullets.push({
+                    x: centerX,
+                    y: centerY,
+                    speedX: Math.cos(angle) * 4,
+                    speedY: Math.sin(angle) * 4
                 });
             }
             
-            enemies.forEach(enemy => {
-                if (enemy.alive) {
-                    enemy.x += enemySpeed * enemyDirection;
-                }
-            });
+            // Add some random bullets for chaos
+            for (let i = 0; i < 10; i++) {
+                const randomAngle = Math.random() * Math.PI * 2;
+                enemyBullets.push({
+                    x: centerX + (Math.random() - 0.5) * 40,
+                    y: centerY + (Math.random() - 0.5) * 40,
+                    speedX: Math.cos(randomAngle) * (2 + Math.random() * 3),
+                    speedY: Math.sin(randomAngle) * (2 + Math.random() * 3)
+                });
+            }
+            
+            juggernaut = null;
+            score += 200; // Big bonus for killing juggernaut
+            document.getElementById('score').textContent = score;
         }
         
         // Collision detection
         function checkCollisions() {
-            // Bullet-enemy collisions
+            // Player bullet-enemy collisions
             for (let i = bullets.length - 1; i >= 0; i--) {
                 for (let j = 0; j < enemies.length; j++) {
                     const bullet = bullets[i];
@@ -223,29 +421,74 @@
                         bullet.y >= enemy.y && 
                         bullet.y <= enemy.y + enemy.height) {
                         
-                        enemy.alive = false;
+                        enemy.health--;
                         bullets.splice(i, 1);
-                        score += 10;
-                        document.getElementById('score').textContent = score;
+                        
+                        if (enemy.health <= 0) {
+                            enemy.alive = false;
+                            score += enemy.points;
+                            document.getElementById('score').textContent = score;
+                        }
                         break;
+                    }
+                }
+                
+                // Player bullet-juggernaut collisions
+                if (juggernaut && juggernaut.alive && bullets[i]) {
+                    const bullet = bullets[i];
+                    if (bullet.x >= juggernaut.x && 
+                        bullet.x <= juggernaut.x + juggernaut.width &&
+                        bullet.y >= juggernaut.y && 
+                        bullet.y <= juggernaut.y + juggernaut.height) {
+                        
+                        juggernaut.health--;
+                        bullets.splice(i, 1);
+                        
+                        if (juggernaut.health <= 0) {
+                            explodeJuggernaut();
+                        }
+                    }
+                }
+            }
+            
+            // Enemy bullet-player collisions
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = enemyBullets[i];
+                const distance = Math.sqrt(
+                    Math.pow(bullet.x - player.x, 2) + 
+                    Math.pow(bullet.y - player.y, 2)
+                );
+                
+                if (distance < 15) {
+                    enemyBullets.splice(i, 1);
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    if (lives <= 0) {
+                        gameRunning = false;
                     }
                 }
             }
             
             // Check if all enemies are destroyed
-            if (enemies.every(enemy => !enemy.alive)) {
+            if (enemies.every(enemy => !enemy.alive) && (!juggernaut || !juggernaut.alive)) {
                 createEnemies();
             }
             
-            // Check if enemies reach the player
+            // Check if enemies reach the player (less likely now with wrapping)
             enemies.forEach(enemy => {
                 if (enemy.alive && enemy.y + enemy.height >= player.y - player.height / 2) {
-                    lives--;
-                    document.getElementById('lives').textContent = lives;
-                    if (lives <= 0) {
-                        gameRunning = false;
-                    } else {
-                        createEnemies();
+                    const distance = Math.sqrt(
+                        Math.pow(enemy.x + enemy.width/2 - player.x, 2) + 
+                        Math.pow(enemy.y + enemy.height/2 - player.y, 2)
+                    );
+                    
+                    if (distance < 20) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        enemy.alive = false;
+                        if (lives <= 0) {
+                            gameRunning = false;
+                        }
                     }
                 }
             });
@@ -290,6 +533,7 @@
                 // Update game objects
                 updateStars();
                 updateBullets();
+                updateEnemyBullets();
                 updateEnemies();
                 checkCollisions();
                 
@@ -297,7 +541,9 @@
                 drawStars();
                 drawPlayer();
                 drawBullets();
+                drawEnemyBullets();
                 drawEnemies();
+                drawJuggernaut();
             } else {
                 drawGameOver();
             }
@@ -311,4 +557,3 @@
     </script>
 </body>
 </html>
-
